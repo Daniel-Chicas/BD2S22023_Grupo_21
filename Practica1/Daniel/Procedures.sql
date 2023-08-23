@@ -1,5 +1,5 @@
 USE [BD2];
-Go;
+
 
 --------------------------------------------
 -- PROCEDURE PARA EL REGISTRO DE USUARIOS --
@@ -65,7 +65,6 @@ BEGIN
 	END; 
 
 END;
-Go;
  
 ---------------------------------------
 -- PROCEDURE PARA EL CAMBIO DE ROLES --
@@ -156,4 +155,168 @@ BEGIN
 
 	END
 END;
-GO;
+
+-- FUNCIÓN PARA VALIDAR QUE SEA DE TIPO NÚMERICO
+CREATE FUNCTION VALIDATE_NUMBER(@Number VARCHAR(50))
+RETURNS BIT
+AS
+BEGIN 
+	-- Validaciones
+    IF @Number IS NOT NULL AND ISNUMERIC(@Number) = 1
+        RETURN 1;
+    ELSE
+        RETURN 0;
+    RETURN 0;
+END;
+
+--FUNCIÓN PARA VALIDAR QUE SEA UNA CADENA DE TEXTO
+CREATE FUNCTION VALIDATE_STRING(@Text VARCHAR(MAX))
+RETURNS BIT
+AS
+BEGIN
+	-- Validaciones
+    IF @Text IS NOT NULL AND TRY_CAST(@Text AS VARCHAR(MAX)) IS NOT NULL AND ISNUMERIC(@Text) = 0
+        RETURN 1;
+    ELSE
+        RETURN 0;
+	RETURN 0;
+END;
+
+-- FUNCIÓN PARA BUSCAR CURSOS POR SU CÓDIGO
+CREATE FUNCTION FIND_COURSE(@CodCourse INT)
+RETURNS BIT
+AS
+BEGIN
+	-- Buscar
+	IF EXISTS (SELECT 1 FROM practica1.Course WHERE [CodCourse] = @CodCourse) AND @CodCourse IS NOT NULL
+		RETURN 1;
+	RETURN 0;
+END;
+
+-- PROCEDIMIENTO PARA REGISTRAR ERRORES EN HISTORYLOG
+CREATE PROCEDURE SAVE_LOG
+	@Description VARCHAR(MAX)
+AS
+BEGIN
+	BEGIN TRY
+		INSERT INTO practica1.HistoryLog([Date], [Description])VALUES(GETDATE(), @Description)
+	END TRY
+	BEGIN CATCH
+		PRINT(ERROR_MESSAGE());
+	END CATCH
+END;
+
+-- PROCEDIMIENTO PARA CREAR CURSOS
+CREATE PROCEDURE PR5
+	@CodCourse VARCHAR(50),
+	@Name VARCHAR(MAX),
+	@CreditsRequired VARCHAR(50)
+AS
+BEGIN
+	BEGIN TRY
+		-- validar el código del curso en formato númerico
+		IF (dbo.VALIDATE_NUMBER(@CodCourse)) = 0
+			BEGIN
+				EXEC [dbo].[SAVE_LOG] 'El código del curso debe ser un número'
+				RAISERROR ('El código del curso debe ser un número', 16, 1);
+			END;
+
+		-- validar el nombre del curso en tipo texto
+		IF (SELECT dbo.VALIDATE_STRING(@Name)) = 0
+			BEGIN
+				EXEC [dbo].[SAVE_LOG] 'El nombre del curso debe ser de varchar' 
+				RAISERROR ('El nombre del curso debe ser de varchar', 16, 1);
+			END;
+
+		-- validar los creditos del curso en formato númerico
+		IF (SELECT dbo.VALIDATE_NUMBER(@CreditsRequired)) = 0
+			BEGIN
+				EXEC [dbo].[SAVE_LOG] 'Los créditos del curso debe de ser un número'
+				RAISERROR ('Los créditos del curso debe de ser un número', 16, 1);
+			END;
+
+		-- validar que el curso no exista
+		IF (SELECT dbo.FIND_COURSE(@CodCourse)) = 1
+			BEGIN
+				EXEC [dbo].[SAVE_LOG] 'El curso ya existe en la base de datos'
+				RAISERROR ('El curso ya existe en la base de datos', 16, 1);
+			END;
+
+		-- insertar en la tabla
+		INSERT INTO practica1.Course([CodCourse],[Name],[CreditsRequired]) VALUES(@CodCourse, @Name, @CreditsRequired)
+		PRINT('Curso insertado en la base de datos');
+	END TRY
+	BEGIN CATCH
+		PRINT(ERROR_MESSAGE());
+	END CATCH
+END;
+
+
+----------
+--	PR3 --
+----------
+ 
+CREATE PROCEDURE PR3
+  @Email VARCHAR(max),
+  @CodCourse INT
+AS
+BEGIN
+	DECLARE @IdStudent uniqueidentifier;
+	DECLARE @CreditsStudent INT;
+	DECLARE @RequiredCredits INT;
+
+	SET @IdStudent = (SELECT Id FROM practica1.Usuarios WHERE Email = @Email);
+	SET @CreditsStudent = (SELECT Credits FROM practica1.ProfileStudent WHERE UserId = @IdStudent);
+	SET @RequiredCredits = (SELECT CreditsRequired FROM practica1.Course WHERE CodCourse = @CodCourse);
+
+	IF @CreditsStudent >= @RequiredCredits
+		BEGIN
+			INSERT INTO practica1.CourseAssignment (StudentId, CourseCodCourse) VALUES (@IdStudent, @CodCourse);
+			INSERT INTO practica1.Notification (UserId, Message, [Date]) 
+			VALUES (
+				@IdStudent,
+				'Se ha inscrito en el curso ' + (SELECT Name FROM practica1.Course WHERE CodCourse = @CodCourse), GETDATE()
+			);
+			INSERT INTO practica1.HistoryLog ([Date], [Description])
+				VALUES (GETDATE(), 'El estudiante con el id ' + CAST(@IdStudent AS VARCHAR(max)) + 'Se ha inscrito en el curso ' + 
+				(SELECT Name FROM practica1.Course WHERE CodCourse = @CodCourse)
+			);
+		END
+	ELSE
+		BEGIN
+		INSERT INTO practica1.HistoryLog ([Date], [Description])
+				VALUES (GETDATE(), 'No se ha podido inscribir en el curso ' + (SELECT Name FROM practica1.Course WHERE CodCourse = @CodCourse) + 
+				' porque no tiene los créditos necesarios'
+			);
+		INSERT INTO practica1.Notification (UserId, Message, [Date]) 
+		VALUES (
+			@IdStudent, 
+			'No se ha podido inscribir en el curso ' + (SELECT Name FROM practica1.Course WHERE CodCourse = @CodCourse) + ' porque no tiene los créditos necesarios', 
+			GETDATE()
+		);
+		RAISERROR('El estudiante no tiene los créditos necesarios para inscribirse en el curso', 16, 1);
+    END
+END;
+
+----------
+--	PR4 --
+----------
+
+CREATE PROCEDURE [PR4]
+    @RoleName NVARCHAR(MAX)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    IF NOT EXISTS (SELECT 1 FROM [practica1].[Roles] WHERE [RoleName] = @RoleName)
+    BEGIN
+        
+        INSERT INTO [practica1].[Roles] ([Id], [RoleName])
+        VALUES (NEWID(), @RoleName);
+
+        PRINT 'Rol creado exitosamente: ' + @RoleName;
+    END
+    ELSE
+    BEGIN
+        PRINT 'El rol ya existe: ' + @RoleName;
+    END
+END;
