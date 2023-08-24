@@ -42,7 +42,7 @@ BEGIN
 				VALUES (@idUser, 0, GETDATE());
 			
 				INSERT INTO [practica1].[Notification] ([UserId], [Message], [Date]) -- Se crea la notificaci�n para indicarle al usuario que si registro fue exitoso
-				VALUES (@idUser, '�Bienvenido "'+@FirstName + ' '+@LastName+'"!', GETDATE());
+				VALUES (@idUser, 'Bienvenido "'+@FirstName + ' '+@LastName+'"!', GETDATE());
 
 				INSERT INTO practica1.HistoryLog ([Date], [Description])
 				VALUES (GETDATE(), 'Se ha registrado al usuario: '+@FirstName+' , correctamente.');
@@ -52,33 +52,21 @@ BEGIN
 		END TRY
 		BEGIN CATCH
             ROLLBACK TRANSACTION; -- Se revierte la transaccion
-			
-			CREATE TABLE ErrorLog (Error NVARCHAR(MAX), ErrorDate DATETIME);
-			INSERT INTO [dbo].[ErrorLog]([Error], [ErrorDate])
-			VALUES ('Ha ocurrido un error inesperado al ingresar al usuario: '+@FirstName, GETDATE());
-			SELECT * FROM dbo.ErrorLog;
-			DROP TABLE dbo.ErrorLog;
-
+			PRINT ('Ha ocurrido un error inesperado al ingresar al usuario: '+@FirstName); 
 			INSERT INTO practica1.HistoryLog ([Date], [Description])
 			VALUES (GETDATE(), 'Ha ocurrido un error inesperado al ingresar al usuario: '+@FirstName);
-			 
 		END CATCH
 	END
-	ELSE BEGIN 
-		CREATE TABLE ErrorLog (Error NVARCHAR(MAX), ErrorDate DATETIME);
-		INSERT INTO [dbo].[ErrorLog]([Error], [ErrorDate])
-        VALUES ('El correo electr�nico ya est� en uso.', GETDATE());
-		SELECT * FROM dbo.ErrorLog;
-		DROP TABLE dbo.ErrorLog;
-
+	ELSE BEGIN  
+        PRINT('El correo electronico ya esta en uso: '+@Email);  
 		INSERT INTO practica1.HistoryLog ([Date], [Description])
-		VALUES (GETDATE(), 'El correo electr�nico: '+@Email+' ya est� en uso.'); 
+		VALUES (GETDATE(), 'El correo electronico: '+@Email+' ya esta en uso.'); 
 	END; 
 END;
  
 -----------------
 -- PROCEDURE 2 --
------------------
+-----------------  
 CREATE PROCEDURE [practica1].[PR2](@Email NVARCHAR(MAX), @CodCourse INT) AS
 BEGIN
 	BEGIN TRANSACTION
@@ -91,15 +79,10 @@ BEGIN
 		SELECT @userId = users.Id, @encontrado = 1 FROM practica1.Usuarios users WHERE users.Email = @Email;
 		
 		IF @encontrado = 0 BEGIN
-			CREATE TABLE ErrorLog (Error NVARCHAR(MAX), ErrorDate DATETIME);
-			INSERT INTO [dbo].[ErrorLog]([Error], [ErrorDate])
-			VALUES ('No se ha encontrado a ning�n usuario con el correo: '+@Email, GETDATE());
-			 
-			INSERT INTO practica1.HistoryLog ([Date], [Description])
-			VALUES (GETDATE(), 'No se ha encontrado a ning�n usuario con el correo: '+@Email);
-			SELECT * FROM dbo.ErrorLog;
-			DROP TABLE dbo.ErrorLog;  
 			ROLLBACK;
+			print ('No se ha encontrado a ningun usuario con el correo: '+@Email); 
+			INSERT INTO practica1.HistoryLog ([Date], [Description])
+			VALUES (GETDATE(), 'No se ha encontrado a ningun usuario con el correo: '+@Email);
 		END
 		ELSE BEGIN
 			SET @nombreUser = (SELECT users.Firstname FROM practica1.Usuarios users where users.Email = @Email);
@@ -136,30 +119,19 @@ BEGIN
 					COMMIT TRANSACTION;
 
 				END
-				ELSE BEGIN
-				
-					CREATE TABLE ErrorLog (Error NVARCHAR(MAX), ErrorDate DATETIME);
-					INSERT INTO [dbo].[ErrorLog]([Error], [ErrorDate])
-					VALUES ('El usuario: '+@nombreUser+', ya tiene rol de tutor.', GETDATE());
-			 
+				ELSE BEGIN 
+					ROLLBACK; 
+					PRINT ('El usuario: '+@nombreUser+', ya tiene rol de tutor.'); 
 					INSERT INTO practica1.HistoryLog ([Date], [Description])
 					VALUES (GETDATE(), 'El usuario: '+@nombreUser+', ya tiene rol de tutor.');
-					ROLLBACK;
-					SELECT * FROM dbo.ErrorLog;
-					DROP TABLE dbo.ErrorLog;  
 				END
 
 			END
-			ELSE BEGIN
-				CREATE TABLE ErrorLog (Error NVARCHAR(MAX), ErrorDate DATETIME);
-				INSERT INTO [dbo].[ErrorLog]([Error], [ErrorDate])
-				VALUES ('No se encontr� el curso con el c�digo: '+convert(nvarchar(max), @CodCourse), GETDATE());
-			 
+			ELSE BEGIN 
+				ROLLBACK; 
+				PRINT('No se encontro el curso con el codigo: '+convert(nvarchar(max), @CodCourse)); 
 				INSERT INTO practica1.HistoryLog ([Date], [Description])
-				VALUES (GETDATE(), 'No se encontr� el curso con el c�digo: '+convert(nvarchar(max), @CodCourse));
-				ROLLBACK;
-				SELECT * FROM dbo.ErrorLog;
-				DROP TABLE dbo.ErrorLog;  
+				VALUES (GETDATE(), 'No se encontro el curso con el codigo: '+convert(nvarchar(max), @CodCourse));
 			END
 
 	END
