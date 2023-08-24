@@ -1,105 +1,6 @@
 use [BD2];
 Go
 
--- Diego
-
--- FUNCIÓN PARA VALIDAR QUE SEA DE TIPO NÚMERICO
-CREATE FUNCTION VALIDATE_NUMBER(@Number VARCHAR(50))
-RETURNS BIT
-AS
-BEGIN 
-	-- Validaciones
-    IF @Number IS NOT NULL AND ISNUMERIC(@Number) = 1
-        RETURN 1;
-    ELSE
-        RETURN 0;
-    RETURN 0;
-END;
-
---FUNCIÓN PARA VALIDAR QUE SEA UNA CADENA DE TEXTO
-CREATE FUNCTION VALIDATE_STRING(@Text VARCHAR(MAX))
-RETURNS BIT
-AS
-BEGIN
-	-- Validaciones
-    IF @Text IS NOT NULL AND TRY_CAST(@Text AS VARCHAR(MAX)) IS NOT NULL AND ISNUMERIC(@Text) = 0
-        RETURN 1;
-    ELSE
-        RETURN 0;
-	RETURN 0;
-END;
-
--- FUNCIÓN PARA BUSCAR CURSOS POR SU CÓDIGO
-CREATE FUNCTION FIND_COURSE(@CodCourse INT)
-RETURNS BIT
-AS
-BEGIN
-	-- Buscar
-	IF EXISTS (SELECT 1 FROM practica1.Course WHERE [CodCourse] = @CodCourse) AND @CodCourse IS NOT NULL
-		RETURN 1;
-	RETURN 0;
-END;
-
--- PROCEDIMIENTO PARA REGISTRAR ERRORES EN HISTORYLOG
-CREATE PROCEDURE SAVE_LOG
-	@Description VARCHAR(MAX)
-AS
-BEGIN
-	BEGIN TRY
-		INSERT INTO practica1.HistoryLog([Date], [Description])VALUES(GETDATE(), @Description)
-	END TRY
-	BEGIN CATCH
-		PRINT(ERROR_MESSAGE());
-	END CATCH
-END;
-
--- PROCEDIMIENTO PARA CREAR CURSOS
-CREATE PROCEDURE PR5
-	@CodCourse VARCHAR(50),
-	@Name VARCHAR(MAX),
-	@CreditsRequired VARCHAR(50)
-AS
-BEGIN
-	BEGIN TRY
-		-- validar el código del curso en formato númerico
-		IF (dbo.VALIDATE_NUMBER(@CodCourse)) = 0
-			BEGIN
-				EXEC [dbo].[SAVE_LOG] 'El código del curso debe ser un número'
-				RAISERROR ('El código del curso debe ser un número', 16, 1);
-			END;
-
-		-- validar el nombre del curso en tipo texto
-		IF (SELECT dbo.VALIDATE_STRING(@Name)) = 0
-			BEGIN
-				EXEC [dbo].[SAVE_LOG] 'El nombre del curso debe ser de varchar' 
-				RAISERROR ('El nombre del curso debe ser de varchar', 16, 1);
-			END;
-
-		-- validar los creditos del curso en formato númerico
-		IF (SELECT dbo.VALIDATE_NUMBER(@CreditsRequired)) = 0
-			BEGIN
-				EXEC [dbo].[SAVE_LOG] 'Los créditos del curso debe de ser un número'
-				RAISERROR ('Los créditos del curso debe de ser un número', 16, 1);
-			END;
-
-		-- validar que el curso no exista
-		IF (SELECT dbo.FIND_COURSE(@CodCourse)) = 1
-			BEGIN
-				EXEC [dbo].[SAVE_LOG] 'El curso ya existe en la base de datos'
-				RAISERROR ('El curso ya existe en la base de datos', 16, 1);
-			END;
-
-		-- insertar en la tabla
-		INSERT INTO practica1.Course([CodCourse],[Name],[CreditsRequired]) VALUES(@CodCourse, @Name, @CreditsRequired)
-		PRINT('Curso insertado en la base de datos');
-	END TRY
-	BEGIN CATCH
-		PRINT(ERROR_MESSAGE());
-	END CATCH
-END;
-
--- Daniel
-
 -------------------------------------------------------
 --	TRIGGER PARA INSERT EN LA TABLA PRACTICA1.COURSE --
 -------------------------------------------------------
@@ -116,7 +17,7 @@ BEGIN
     SELECT @codigo = CodCourse FROM inserted;
 	SELECT @creditos = CreditsRequired FROM inserted;
 	 
-	SET @mensaje = 'Nuevo curso agregado: '+@nombre+' (Código: '+ CONVERT(VARCHAR(10), @codigo) + ', Créditos: '+ CONVERT(VARCHAR(10), @creditos) + ').'
+	SET @mensaje = 'Nuevo curso agregado: '+@nombre+' (Cï¿½digo: '+ CONVERT(VARCHAR(10), @codigo) + ', Crï¿½ditos: '+ CONVERT(VARCHAR(10), @creditos) + ').'
     INSERT INTO practica1.HistoryLog ([Date], [Description])
     VALUES (GETDATE(), @mensaje);
 END;
@@ -139,7 +40,7 @@ BEGIN
     SELECT @codigo = CodCourse FROM inserted;
 	SELECT @creditos = CreditsRequired FROM inserted;
 	 
-	SET @mensaje = 'Se ha actualizado el curso: '+@nombre+' (Código: '+ CONVERT(VARCHAR(10), @codigo) + ', Créditos: '+ CONVERT(VARCHAR(10), @creditos) + ').'
+	SET @mensaje = 'Se ha actualizado el curso: '+@nombre+' (Cï¿½digo: '+ CONVERT(VARCHAR(10), @codigo) + ', Crï¿½ditos: '+ CONVERT(VARCHAR(10), @creditos) + ').'
     INSERT INTO practica1.HistoryLog ([Date], [Description])
     VALUES (GETDATE(), @mensaje);
 END;
@@ -159,7 +60,7 @@ BEGIN
     SELECT @nombre = Name FROM deleted;
     SELECT @codigo = CodCourse FROM deleted; 
 	 
-	SET @mensaje = 'Se ha eliminado el curso: '+@nombre+' (Código: '+ CONVERT(VARCHAR(10), @codigo) +').'
+	SET @mensaje = 'Se ha eliminado el curso: '+@nombre+' (Cï¿½digo: '+ CONVERT(VARCHAR(10), @codigo) +').'
     INSERT INTO practica1.HistoryLog ([Date], [Description])
     VALUES (GETDATE(), @mensaje);
 END;
@@ -202,7 +103,7 @@ BEGIN
   SELECT @idEstudiante = StudentId, @codigoCurso = CourseCodCourse FROM inserted;
   
   SET @estudiante = (SELECT Firstname FROM practica1.Usuarios WHERE Id = @idEstudiante) + ' ' + (SELECT Lastname FROM practica1.Usuarios WHERE Id = @idEstudiante);
-  SET @mensaje = 'El estudiante: "' + @estudiante + '", ha actualizado su asignación en el curso: "' + (SELECT Name FROM practica1.Course WHERE CodCourse = @codigoCurso)+'".';
+  SET @mensaje = 'El estudiante: "' + @estudiante + '", ha actualizado su asignaciï¿½n en el curso: "' + (SELECT Name FROM practica1.Course WHERE CodCourse = @codigoCurso)+'".';
   
   INSERT INTO practica1.HistoryLog ([Date], [Description])
   VALUES (GETDATE(), @mensaje);
@@ -267,7 +168,7 @@ BEGIN
   SELECT @idProfesor = TutorId, @codigoCurso = CourseCodCourse FROM inserted;
   
   SET @profesor = (SELECT Firstname FROM practica1.Usuarios WHERE Id = @idProfesor) + ' ' + (SELECT Lastname FROM practica1.Usuarios WHERE Id = @idProfesor);
-  SET @mensaje = 'Se ha actualizado la asignación del tutor: "' + @profesor + '", al curso: "' + (SELECT Name FROM practica1.Course WHERE CodCourse = @codigoCurso)+'"';
+  SET @mensaje = 'Se ha actualizado la asignaciï¿½n del tutor: "' + @profesor + '", al curso: "' + (SELECT Name FROM practica1.Course WHERE CodCourse = @codigoCurso)+'"';
   
   INSERT INTO practica1.HistoryLog ([Date], [Description])
   VALUES (GETDATE(), @mensaje);
@@ -290,7 +191,7 @@ BEGIN
 
   
   SET @profesor = (SELECT Firstname FROM practica1.Usuarios WHERE Id = @idProfesor) + ' ' + (SELECT Lastname FROM practica1.Usuarios WHERE Id = @idProfesor);
-  SET @mensaje = 'Se ha eliminado la asignación del tutor: "' + @profesor + '", al curso: "' + (SELECT Name FROM practica1.Course WHERE CodCourse = @codigoCurso)+'"';
+  SET @mensaje = 'Se ha eliminado la asignaciï¿½n del tutor: "' + @profesor + '", al curso: "' + (SELECT Name FROM practica1.Course WHERE CodCourse = @codigoCurso)+'"';
   
   INSERT INTO practica1.HistoryLog ([Date], [Description])
   VALUES (GETDATE(), @mensaje);
@@ -311,7 +212,7 @@ BEGIN
   SELECT @idUser = UserId FROM inserted;
 
   SET @nombre = (SELECT Firstname FROM practica1.Usuarios WHERE Id = @idUser) + ' ' + (SELECT Lastname FROM practica1.Usuarios WHERE Id = @idUser);
-  SET @mensaje = 'El usuario: "' + @nombre + '" tiene una notificación pendiente';
+  SET @mensaje = 'El usuario: "' + @nombre + '" tiene una notificaciï¿½n pendiente';
   
   INSERT INTO practica1.HistoryLog ([Date], [Description])
   VALUES (GETDATE(), @mensaje);
@@ -332,7 +233,7 @@ BEGIN
   SELECT @idUser = UserId FROM inserted;
 
   SET @nombre = (SELECT Firstname FROM practica1.Usuarios WHERE Id = @idUser) + ' ' + (SELECT Lastname FROM practica1.Usuarios WHERE Id = @idUser);
-  SET @mensaje = 'Se ha actualizado una notificación del usuario: "' + @nombre + '"';
+  SET @mensaje = 'Se ha actualizado una notificaciï¿½n del usuario: "' + @nombre + '"';
   
   INSERT INTO practica1.HistoryLog ([Date], [Description])
   VALUES (GETDATE(), @mensaje);
@@ -353,7 +254,7 @@ BEGIN
   SELECT @idUser = UserId FROM deleted;
 
   SET @nombre = (SELECT Firstname FROM practica1.Usuarios WHERE Id = @idUser) + ' ' + (SELECT Lastname FROM practica1.Usuarios WHERE Id = @idUser);
-  SET @mensaje = 'Se ha eliminado una notificación del usuario: "' + @nombre + '"';
+  SET @mensaje = 'Se ha eliminado una notificaciï¿½n del usuario: "' + @nombre + '"';
   
   INSERT INTO practica1.HistoryLog ([Date], [Description])
   VALUES (GETDATE(), @mensaje);
@@ -711,7 +612,7 @@ BEGIN
   DECLARE @estudiante VARCHAR(max);
 
   SELECT @estudiante = Firstname + ' ' + Lastname FROM inserted;
-  SET @mensaje = 'Se ha actualizado la información del usuario: "' + @estudiante + '"';
+  SET @mensaje = 'Se ha actualizado la informaciï¿½n del usuario: "' + @estudiante + '"';
   
   INSERT INTO practica1.HistoryLog ([Date], [Description])
   VALUES (GETDATE(), @mensaje);

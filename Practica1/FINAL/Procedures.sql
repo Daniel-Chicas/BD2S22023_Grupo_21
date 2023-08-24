@@ -1,15 +1,26 @@
 USE [BD2];
 
+-- PROCEDIMIENTO PARA REGISTRAR ERRORES EN HISTORYLOG
+CREATE PROCEDURE SAVE_LOG
+	@Description VARCHAR(MAX)
+AS
+BEGIN
+	BEGIN TRY
+		INSERT INTO practica1.HistoryLog([Date], [Description])VALUES(GETDATE(), @Description)
+	END TRY
+	BEGIN CATCH
+		PRINT(ERROR_MESSAGE());
+	END CATCH
+END;
 
---------------------------------------------
--- PROCEDURE PARA EL REGISTRO DE USUARIOS --
---------------------------------------------
--- DROP PROCEDURE [practica1].[PR1];
+-----------------
+-- PROCEDURE 1 --
+-----------------
 CREATE PROCEDURE [practica1].[PR1](@FirstName NVARCHAR(MAX),@LastName NVARCHAR(MAX),@Email NVARCHAR(MAX),@DateOfBirth DATETIME2,@Password NVARCHAR(MAX),@Credits INT) AS
 BEGIN
 	DECLARE @idUser UNIQUEIDENTIFIER;
 	DECLARE @idRol UNIQUEIDENTIFIER;
-	DECLARE @tfa bit = 0; -- el estado de la verificación de dos pasos es desactivado por defecto.
+	DECLARE @tfa bit = 0; -- el estado de la verificaciï¿½n de dos pasos es desactivado por defecto.
 	  
 
     IF NOT EXISTS (SELECT 1 FROM [practica1].[Usuarios] WHERE [Email] = @Email) BEGIN
@@ -27,11 +38,11 @@ BEGIN
 				INSERT INTO [practica1].[ProfileStudent] ([UserId], [Credits]) -- Se crea el perfil del usuario creado recientemente
 				VALUES (@idUser, @Credits);
 			 
-				INSERT INTO [practica1].[TFA] ([UserId], [Status], [LastUpdate]) -- Se asigna como estado inactivo la verificación de dos pasos para el usuario creado recientemente
+				INSERT INTO [practica1].[TFA] ([UserId], [Status], [LastUpdate]) -- Se asigna como estado inactivo la verificaciï¿½n de dos pasos para el usuario creado recientemente
 				VALUES (@idUser, 0, GETDATE());
 			
-				INSERT INTO [practica1].[Notification] ([UserId], [Message], [Date]) -- Se crea la notificación para indicarle al usuario que si registro fue exitoso
-				VALUES (@idUser, '¡Bienvenido "'+@FirstName + ' '+@LastName+'"!', GETDATE());
+				INSERT INTO [practica1].[Notification] ([UserId], [Message], [Date]) -- Se crea la notificaciï¿½n para indicarle al usuario que si registro fue exitoso
+				VALUES (@idUser, 'ï¿½Bienvenido "'+@FirstName + ' '+@LastName+'"!', GETDATE());
 
 				INSERT INTO practica1.HistoryLog ([Date], [Description])
 				VALUES (GETDATE(), 'Se ha registrado al usuario: '+@FirstName+' , correctamente.');
@@ -56,20 +67,18 @@ BEGIN
 	ELSE BEGIN 
 		CREATE TABLE ErrorLog (Error NVARCHAR(MAX), ErrorDate DATETIME);
 		INSERT INTO [dbo].[ErrorLog]([Error], [ErrorDate])
-        VALUES ('El correo electrónico ya está en uso.', GETDATE());
+        VALUES ('El correo electrï¿½nico ya estï¿½ en uso.', GETDATE());
 		SELECT * FROM dbo.ErrorLog;
 		DROP TABLE dbo.ErrorLog;
 
 		INSERT INTO practica1.HistoryLog ([Date], [Description])
-		VALUES (GETDATE(), 'El correo electrónico: '+@Email+' ya está en uso.'); 
+		VALUES (GETDATE(), 'El correo electrï¿½nico: '+@Email+' ya estï¿½ en uso.'); 
 	END; 
-
 END;
  
----------------------------------------
--- PROCEDURE PARA EL CAMBIO DE ROLES --
----------------------------------------
--- DROP PROCEDURE [practica1].[PR2];
+-----------------
+-- PROCEDURE 2 --
+-----------------
 CREATE PROCEDURE [practica1].[PR2](@Email NVARCHAR(MAX), @CodCourse INT) AS
 BEGIN
 	BEGIN TRANSACTION
@@ -84,10 +93,10 @@ BEGIN
 		IF @encontrado = 0 BEGIN
 			CREATE TABLE ErrorLog (Error NVARCHAR(MAX), ErrorDate DATETIME);
 			INSERT INTO [dbo].[ErrorLog]([Error], [ErrorDate])
-			VALUES ('No se ha encontrado a ningún usuario con el correo: '+@Email, GETDATE());
+			VALUES ('No se ha encontrado a ningï¿½n usuario con el correo: '+@Email, GETDATE());
 			 
 			INSERT INTO practica1.HistoryLog ([Date], [Description])
-			VALUES (GETDATE(), 'No se ha encontrado a ningún usuario con el correo: '+@Email);
+			VALUES (GETDATE(), 'No se ha encontrado a ningï¿½n usuario con el correo: '+@Email);
 			SELECT * FROM dbo.ErrorLog;
 			DROP TABLE dbo.ErrorLog;  
 			ROLLBACK;
@@ -144,10 +153,10 @@ BEGIN
 			ELSE BEGIN
 				CREATE TABLE ErrorLog (Error NVARCHAR(MAX), ErrorDate DATETIME);
 				INSERT INTO [dbo].[ErrorLog]([Error], [ErrorDate])
-				VALUES ('No se encontró el curso con el código: '+convert(nvarchar(max), @CodCourse), GETDATE());
+				VALUES ('No se encontrï¿½ el curso con el cï¿½digo: '+convert(nvarchar(max), @CodCourse), GETDATE());
 			 
 				INSERT INTO practica1.HistoryLog ([Date], [Description])
-				VALUES (GETDATE(), 'No se encontró el curso con el código: '+convert(nvarchar(max), @CodCourse));
+				VALUES (GETDATE(), 'No se encontrï¿½ el curso con el cï¿½digo: '+convert(nvarchar(max), @CodCourse));
 				ROLLBACK;
 				SELECT * FROM dbo.ErrorLog;
 				DROP TABLE dbo.ErrorLog;  
@@ -156,106 +165,9 @@ BEGIN
 	END
 END;
 
--- FUNCIÓN PARA VALIDAR QUE SEA DE TIPO NÚMERICO
-CREATE FUNCTION VALIDATE_NUMBER(@Number VARCHAR(50))
-RETURNS BIT
-AS
-BEGIN 
-	-- Validaciones
-    IF @Number IS NOT NULL AND ISNUMERIC(@Number) = 1
-        RETURN 1;
-    ELSE
-        RETURN 0;
-    RETURN 0;
-END;
-
---FUNCIÓN PARA VALIDAR QUE SEA UNA CADENA DE TEXTO
-CREATE FUNCTION VALIDATE_STRING(@Text VARCHAR(MAX))
-RETURNS BIT
-AS
-BEGIN
-	-- Validaciones
-    IF @Text IS NOT NULL AND TRY_CAST(@Text AS VARCHAR(MAX)) IS NOT NULL AND ISNUMERIC(@Text) = 0
-        RETURN 1;
-    ELSE
-        RETURN 0;
-	RETURN 0;
-END;
-
--- FUNCIÓN PARA BUSCAR CURSOS POR SU CÓDIGO
-CREATE FUNCTION FIND_COURSE(@CodCourse INT)
-RETURNS BIT
-AS
-BEGIN
-	-- Buscar
-	IF EXISTS (SELECT 1 FROM practica1.Course WHERE [CodCourse] = @CodCourse) AND @CodCourse IS NOT NULL
-		RETURN 1;
-	RETURN 0;
-END;
-
--- PROCEDIMIENTO PARA REGISTRAR ERRORES EN HISTORYLOG
-CREATE PROCEDURE SAVE_LOG
-	@Description VARCHAR(MAX)
-AS
-BEGIN
-	BEGIN TRY
-		INSERT INTO practica1.HistoryLog([Date], [Description])VALUES(GETDATE(), @Description)
-	END TRY
-	BEGIN CATCH
-		PRINT(ERROR_MESSAGE());
-	END CATCH
-END;
-
--- PROCEDIMIENTO PARA CREAR CURSOS
-CREATE PROCEDURE PR5
-	@CodCourse VARCHAR(50),
-	@Name VARCHAR(MAX),
-	@CreditsRequired VARCHAR(50)
-AS
-BEGIN
-	BEGIN TRY
-		-- validar el código del curso en formato númerico
-		IF (dbo.VALIDATE_NUMBER(@CodCourse)) = 0
-			BEGIN
-				EXEC [dbo].[SAVE_LOG] 'El código del curso debe ser un número'
-				RAISERROR ('El código del curso debe ser un número', 16, 1);
-			END;
-
-		-- validar el nombre del curso en tipo texto
-		IF (SELECT dbo.VALIDATE_STRING(@Name)) = 0
-			BEGIN
-				EXEC [dbo].[SAVE_LOG] 'El nombre del curso debe ser de varchar' 
-				RAISERROR ('El nombre del curso debe ser de varchar', 16, 1);
-			END;
-
-		-- validar los creditos del curso en formato númerico
-		IF (SELECT dbo.VALIDATE_NUMBER(@CreditsRequired)) = 0
-			BEGIN
-				EXEC [dbo].[SAVE_LOG] 'Los créditos del curso debe de ser un número'
-				RAISERROR ('Los créditos del curso debe de ser un número', 16, 1);
-			END;
-
-		-- validar que el curso no exista
-		IF (SELECT dbo.FIND_COURSE(@CodCourse)) = 1
-			BEGIN
-				EXEC [dbo].[SAVE_LOG] 'El curso ya existe en la base de datos'
-				RAISERROR ('El curso ya existe en la base de datos', 16, 1);
-			END;
-
-		-- insertar en la tabla
-		INSERT INTO practica1.Course([CodCourse],[Name],[CreditsRequired]) VALUES(@CodCourse, @Name, @CreditsRequired)
-		PRINT('Curso insertado en la base de datos');
-	END TRY
-	BEGIN CATCH
-		PRINT(ERROR_MESSAGE());
-	END CATCH
-END;
-
-
-----------
---	PR3 --
-----------
- 
+-----------------
+-- PROCEDURE 3 --
+-----------------
 CREATE PROCEDURE PR3
   @Email VARCHAR(max),
   @CodCourse INT
@@ -286,22 +198,21 @@ BEGIN
 		BEGIN
 		INSERT INTO practica1.HistoryLog ([Date], [Description])
 				VALUES (GETDATE(), 'No se ha podido inscribir en el curso ' + (SELECT Name FROM practica1.Course WHERE CodCourse = @CodCourse) + 
-				' porque no tiene los créditos necesarios'
+				' porque no tiene los crï¿½ditos necesarios'
 			);
 		INSERT INTO practica1.Notification (UserId, Message, [Date]) 
 		VALUES (
 			@IdStudent, 
-			'No se ha podido inscribir en el curso ' + (SELECT Name FROM practica1.Course WHERE CodCourse = @CodCourse) + ' porque no tiene los créditos necesarios', 
+			'No se ha podido inscribir en el curso ' + (SELECT Name FROM practica1.Course WHERE CodCourse = @CodCourse) + ' porque no tiene los crï¿½ditos necesarios', 
 			GETDATE()
 		);
-		RAISERROR('El estudiante no tiene los créditos necesarios para inscribirse en el curso', 16, 1);
+		RAISERROR('El estudiante no tiene los crï¿½ditos necesarios para inscribirse en el curso', 16, 1);
     END
 END;
 
-----------
---	PR4 --
-----------
-
+-----------------
+-- PROCEDURE 4 --
+-----------------
 CREATE PROCEDURE [PR4]
     @RoleName NVARCHAR(MAX)
 AS
@@ -319,4 +230,51 @@ BEGIN
     BEGIN
         PRINT 'El rol ya existe: ' + @RoleName;
     END
+END;
+
+-----------------
+-- PROCEDURE 5 --
+-----------------
+CREATE PROCEDURE PR5
+	@CodCourse VARCHAR(50),
+	@Name VARCHAR(MAX),
+	@CreditsRequired VARCHAR(50)
+AS
+BEGIN
+	BEGIN TRY
+		-- validar el cï¿½digo del curso en formato nï¿½merico
+		IF (dbo.VALIDATE_NUMBER(@CodCourse)) = 0
+			BEGIN
+				EXEC [dbo].[SAVE_LOG] 'El cï¿½digo del curso debe ser un nï¿½mero'
+				RAISERROR ('El cï¿½digo del curso debe ser un nï¿½mero', 16, 1);
+			END;
+
+		-- validar el nombre del curso en tipo texto
+		IF (SELECT dbo.VALIDATE_STRING(@Name)) = 0
+			BEGIN
+				EXEC [dbo].[SAVE_LOG] 'El nombre del curso debe ser de varchar' 
+				RAISERROR ('El nombre del curso debe ser de varchar', 16, 1);
+			END;
+
+		-- validar los creditos del curso en formato nï¿½merico
+		IF (SELECT dbo.VALIDATE_NUMBER(@CreditsRequired)) = 0
+			BEGIN
+				EXEC [dbo].[SAVE_LOG] 'Los crï¿½ditos del curso debe de ser un nï¿½mero'
+				RAISERROR ('Los crï¿½ditos del curso debe de ser un nï¿½mero', 16, 1);
+			END;
+
+		-- validar que el curso no exista
+		IF (SELECT dbo.FIND_COURSE(@CodCourse)) = 1
+			BEGIN
+				EXEC [dbo].[SAVE_LOG] 'El curso ya existe en la base de datos'
+				RAISERROR ('El curso ya existe en la base de datos', 16, 1);
+			END;
+
+		-- insertar en la tabla
+		INSERT INTO practica1.Course([CodCourse],[Name],[CreditsRequired]) VALUES(@CodCourse, @Name, @CreditsRequired)
+		PRINT('Curso insertado en la base de datos');
+	END TRY
+	BEGIN CATCH
+		PRINT(ERROR_MESSAGE());
+	END CATCH
 END;
